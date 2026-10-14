@@ -1,0 +1,79 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ptxyz_sqlserver
+    hostname: sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
+      - MSSQL_PID=${MSSQL_PID:-Developer}
+    ports:
+      - "${MSSQL_PORT:-1433}:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./data:/data
+      - ./init-scripts:/init-scripts
+      - ./tests:/tests
+    networks:
+      - dw_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -C -N || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+
+  db_init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ptxyz_db_init
+    environment:
+      - SA_PASSWORD=${MSSQL_SA_PASSWORD}
+    volumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    networks:
+      - dw_network
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    command:
+      - bash
+      - -c
+      - "sed 's/[[:cntrl:]]$$//' /docker-entrypoint-initdb.d/init-db.sh > /tmp/init-db.sh && bash /tmp/init-db.sh"
+    restart: "no"
+
+  etl:
+    image: python:3.11-slim
+    container_name: ptxyz_etl
+    working_dir: /app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONUTF8=1
+      - MSSQL_HOST=sqlserver
+      - MSSQL_PORT=1433
+      - MSSQL_USER=${MSSQL_USER:-sa}
+      - MSSQL_DB=${MSSQL_DB:-PTXYZ_DataWarehouse}
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
+      - DATA_DIR=/app/data
+    volumes:
+      - ./standalone_etl.py:/app/standalone_etl.py:ro
+      - ./run_etl.py:/app/run_etl.py:ro
+      - ./data:/app/data:ro
+      - ./logs:/app/logs
+    networks:
+      - dw_network
+    depends_on:
+      db_init:
+        condition: service_completed_successfully
+    command:
+      - sh
+      - -c
+      - "pip install --no-cache-dir -q pandas==2.2.3 pymssql && python /app/run_etl.py"
+    restart: "no"
+
+volumes:
+  sqlserver_data:
+
+networks:
+  dw_network:
+    driver: bridge
