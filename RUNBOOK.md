@@ -1,5 +1,9 @@
 # RUNBOOK: Data Warehouse Pertambangan PT XYZ
 
+Nama: Arinda Dita Pratiwi
+NIM: 2410817120018
+Repo sumber (fork): https://github.com/sains-data/Perancangan-Data-Warehouse-Industri-Pertambangan-PT.XYZ
+
 Tugas Datawarehouse, replikasi repo Perancangan-Data-Warehouse-Industri-Pertambangan-PT.XYZ.
 Dikerjakan di Windows (PowerShell) dengan Docker Desktop.
 
@@ -207,3 +211,7 @@ apa adanya sesuai aturan tugas, sehingga query OLAP memakai tahun 2025 sampai 20
 
 **7. Keterbatasan.** Layanan dashboard (Grafana, Superset, Metabase) dan Airflow tidak dijalankan.
 Fungsinya digantikan query OLAP langsung ke SQL Server dan `run_etl.py`.
+
+**8. Nama database beda dari README.** Bagian Service Details di README menyebut database `PTXYZ_DW`,
+sedangkan pipeline kami memakai `PTXYZ_DataWarehouse` (diatur lewat `MSSQL_DB` di `.env`). Nama
+tabel, kolom, dan tipe data tidak berubah, jadi skema tetap sama dengan README.
